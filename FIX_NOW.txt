@@ -1,0 +1,28 @@
+이 파일을 읽고 터미널에서 실행하세요!
+
+=== 1단계: Prisma Client 재생성 ===
+
+터미널에서 다음 명령어 실행:
+
+npx prisma generate
+
+또는
+
+npm run prisma:generate
+
+=== 2단계: 서버 실행 ===
+
+npm run dev
+
+=== 만약 안 되면 ===
+
+1. node_modules/.prisma 폴더 삭제
+2. npx prisma generate 다시 실행
+3. npm run dev 실행
+
+=== .env 파일 확인 ===
+
+.env 파일이 있는지 확인하고 MySQL 비밀번호가 올바른지 확인하세요!
+
+DATABASE_URL="mysql://root:비밀번호@localhost:3306/kitae_db"
+

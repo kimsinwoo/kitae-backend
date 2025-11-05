@@ -1,0 +1,7 @@
+백엔드 폴더에서 다음 명령어를 실행하세요:
+
+cd "KITAE-project-1-backend"
+npx prisma migrate dev --name add_user_address_field
+
+이 명령어는 데이터베이스에 address 필드를 추가하고 Prisma Client를 업데이트합니다.
+

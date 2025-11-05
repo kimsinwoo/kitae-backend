@@ -1,0 +1,35 @@
+# 이 파일을 .env로 이름 변경하고 비밀번호를 수정하세요!
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database (MySQL)
+DATABASE_URL="mysql://root:yourpassword@localhost:3306/kitae_db"
+
+# JWT
+JWT_SECRET=kitae-super-secret-key-2024-change-in-production
+JWT_EXPIRES_IN=7d
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000
+
+# Admin
+ADMIN_EMAIL=admin@kitae.com
+ADMIN_PASSWORD=admin123456
+
+# 토스페이먼츠
+TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+
+# Email Configuration (이메일 인증 코드 발송용)
+# Gmail을 사용하는 경우:
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_SERVICE=gmail
+
+# 다른 SMTP 서버를 사용하는 경우:
+# EMAIL_HOST=smtp.example.com
+# EMAIL_PORT=587
+# EMAIL_USER=your-email@example.com
+# EMAIL_PASSWORD=your-password
+

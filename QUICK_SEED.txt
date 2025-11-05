@@ -1,0 +1,31 @@
+=== 빠른 실행 방법 ===
+
+1. 터미널 열기
+2. 다음 명령어 실행:
+
+cd KITAE-project-1-backend
+npm run seed
+
+또는
+
+cd KITAE-project-1-backend
+node scripts/seedProducts.js
+
+=== 성공 확인 ===
+
+성공 메시지가 나오면 완료!
+다음과 같은 메시지가 보여야 합니다:
+
+✅ Category created: 상의
+✅ Category created: 하의
+✅ Category created: 아우터
+✅ Category created: 악세서리
+✅ Product created: Minimalist Black Blazer
+✅ Product created: Editorial Coat
+...
+
+=== 확인 ===
+
+프론트엔드에서 http://localhost:3000 접속
+상품이 보이면 성공!
+

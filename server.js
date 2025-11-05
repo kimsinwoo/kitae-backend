@@ -1,0 +1,99 @@
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const path = require('path');
+const session = require('express-session');
+const { connectDB } = require('./config/database');
+
+// Load environment variables
+const envResult = dotenv.config({ path: path.resolve(__dirname, '.env') });
+if (envResult.error) {
+  console.warn('⚠️ .env file not found or error loading:', envResult.error.message);
+} else {
+  console.log('✅ .env file loaded successfully');
+}
+
+// Debug: Check email configuration on startup
+console.log('\n📧 Email Configuration on Startup:');
+console.log(`EMAIL_USER: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '***' : 'NOT SET'}`);
+console.log(`EMAIL_PASSWORD: ${process.env.EMAIL_PASSWORD ? '***SET***' : 'NOT SET'}`);
+console.log(`EMAIL_SERVICE: ${process.env.EMAIL_SERVICE || 'gmail (default)'}`);
+console.log('');
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'kitae-session-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS에서만 true
+    httpOnly: true, // XSS 공격 방지
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    sameSite: 'lax' // CSRF 공격 방지
+  },
+  name: 'kitae.sid' // 기본 'connect.sid' 대신 커스텀 이름
+}));
+
+// Routes
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/products', require('./routes/product.routes'));
+app.use('/api/categories', require('./routes/category.routes'));
+app.use('/api/cart', require('./routes/cart.routes'));
+app.use('/api/favorites', require('./routes/favorite.routes'));
+app.use('/api/orders', require('./routes/order.routes'));
+app.use('/api/reviews', require('./routes/review.routes'));
+app.use('/api/lookbooks', require('./routes/lookbook.routes'));
+app.use('/api/announcements', require('./routes/announcement.routes'));
+app.use('/api/payments', require('./routes/payment.routes'));
+app.use('/api/admin', require('./routes/admin.routes'));
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'KITAE Backend is running' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Error:', err.message);
+  console.error('❌ Error name:', err.name);
+  console.error('❌ Stack:', err.stack);
+  console.error('❌ Request:', {
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    session: req.session ? 'exists' : 'missing'
+  });
+  
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    errorName: process.env.NODE_ENV === 'development' ? err.name : undefined
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+
+// Connect to database and start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 KITAE Backend Server running on port ${PORT}`);
+  });
+}).catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
+
