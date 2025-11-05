@@ -24,7 +24,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'],
+  origin: ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
