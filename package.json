@@ -11,7 +11,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "node scripts/seedAll.js"
+    "seed": "node scripts/seedProducts.js && node scripts/test"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",

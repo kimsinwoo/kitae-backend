@@ -23,9 +23,20 @@ console.log('');
 const app = express();
 
 // Middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000'];
+
+if (allowedOrigins.length === 0) {
+  console.warn('⚠️ ALLOWED_ORIGINS is not set in environment variables');
+}
+
 app.use(cors({
-  origin: ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000'],
-  credentials: true
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 3600
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -75,7 +86,12 @@ app.use((err, req, res, next) => {
     session: req.session ? 'exists' : 'missing'
   });
   
-  const statusCode = err.statusCode || 500;
+  // 에러가 이미 응답되었으면 처리하지 않음
+  if (res.headersSent) {
+    return next(err);
+  }
+  
+  const statusCode = err.statusCode || err.status || 500;
   res.status(statusCode).json({
     success: false,
     message: err.message || 'Internal server error',
@@ -85,7 +101,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
+if (!PORT) {
+  console.error('❌ PORT is not set in environment variables');
+  process.exit(1);
+}
 
 // Connect to database and start server
 connectDB().then(() => {

@@ -75,7 +75,8 @@ const login = async (req, res, next) => {
       res.json({
         success: true,
         data: {
-          user: result.user
+          user: result.user,
+          token: result.token
         },
         message: 'Login successful'
       });
@@ -148,7 +149,43 @@ const resetPassword = async (req, res, next) => {
 
 const kakaoLogin = async (req, res, next) => {
   try {
-    const { accessToken } = req.body;
+    const { accessToken, code, state, redirectUri } = req.body;
+    
+    console.log('🔵 Kakao Login Request:', { hasCode: !!code, hasState: !!state, hasAccessToken: !!accessToken, hasRedirectUri: !!redirectUri });
+    
+    // OAuth 코드로부터 access token을 받는 경우 (백엔드에서 처리)
+    if (code && state) {
+      console.log('🔄 Kakao: Exchanging code for access token...');
+      const accessTokenFromCode = await authService.getKakaoAccessTokenFromCode(code, state, redirectUri);
+      console.log('✅ Kakao: Access token received, getting user info...');
+      const result = await authService.kakaoLogin(accessTokenFromCode);
+      
+      // 세션에 사용자 정보 저장
+      req.session.userId = result.user.id;
+      req.session.userEmail = result.user.email;
+      req.session.userRole = result.user.role;
+      req.session.isAuthenticated = true;
+      
+      console.log('✅ Kakao login successful:', result.user?.email || result.user?.name || 'Unknown');
+      console.log('✅ Session created:', req.sessionID);
+      
+      res.json({
+        success: true,
+        data: result,
+        message: 'Kakao login successful'
+      });
+      return;
+    }
+    
+    // 직접 access token을 받는 경우
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Access token or code is required'
+      });
+    }
+    
+    console.log('🔄 Kakao: Using direct access token...');
     const result = await authService.kakaoLogin(accessToken);
     
     // 세션에 사용자 정보 저장
@@ -157,17 +194,114 @@ const kakaoLogin = async (req, res, next) => {
     req.session.userRole = result.user.role;
     req.session.isAuthenticated = true;
     
-    console.log('✅ Kakao login successful:', result.user.email);
+    console.log('✅ Kakao login successful:', result.user?.email || result.user?.name || 'Unknown');
     console.log('✅ Session created:', req.sessionID);
     
     res.json({
       success: true,
       data: {
-        user: result.user
+        user: result.user,
+        token: result.token
       },
       message: 'Kakao login successful'
     });
   } catch (error) {
+    console.error('❌ Kakao login error:', error.message);
+    console.error('❌ Kakao login error stack:', error.stack);
+    next(error);
+  }
+};
+
+const googleLogin = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID token is required'
+      });
+    }
+    const result = await authService.googleLogin(idToken);
+    // 세션에 사용자 정보 저장
+    req.session.userId = result.user.id;
+    req.session.userEmail = result.user.email;
+    req.session.userRole = result.user.role;
+    req.session.isAuthenticated = true;
+    
+    console.log('✅ Google login successful:', result.user?.email || result.user?.name || 'Unknown');
+    console.log('✅ Session created:', req.sessionID);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: 'Google login successful'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const naverLogin = async (req, res, next) => {
+  try {
+    const { accessToken, code, state, redirectUri } = req.body;
+    
+    console.log('🟢 Naver Login Request:', { hasCode: !!code, hasState: !!state, hasAccessToken: !!accessToken, hasRedirectUri: !!redirectUri });
+    
+    // OAuth 코드로부터 access token을 받는 경우 (백엔드에서 처리)
+    if (code && state) {
+      console.log('🔄 Naver: Exchanging code for access token...');
+      const accessTokenFromCode = await authService.getNaverAccessTokenFromCode(code, state, redirectUri);
+      console.log('✅ Naver: Access token received, getting user info...');
+      const result = await authService.naverLogin(accessTokenFromCode);
+      
+      // 세션에 사용자 정보 저장
+      req.session.userId = result.user.id;
+      req.session.userEmail = result.user.email;
+      req.session.userRole = result.user.role;
+      req.session.isAuthenticated = true;
+      
+      console.log('✅ Naver login successful:', result.user?.email || result.user?.name || 'Unknown');
+      console.log('✅ Session created:', req.sessionID);
+      
+      res.json({
+        success: true,
+        data: result,
+        message: 'Naver login successful'
+      });
+      return;
+    }
+    
+    // 직접 access token을 받는 경우
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Access token or code is required'
+      });
+    }
+    
+    console.log('🔄 Naver: Using direct access token...');
+    const result = await authService.naverLogin(accessToken);
+    
+    // 세션에 사용자 정보 저장
+    req.session.userId = result.user.id;
+    req.session.userEmail = result.user.email;
+    req.session.userRole = result.user.role;
+    req.session.isAuthenticated = true;
+    
+    console.log('✅ Naver login successful:', result.user?.email || result.user?.name || 'Unknown');
+    console.log('✅ Session created:', req.sessionID);
+    
+    res.json({
+      success: true,
+      data: {
+        user: result.user,
+        token: result.token
+      },
+      message: 'Naver login successful'
+    });
+  } catch (error) {
+    console.error('❌ Naver login error:', error.message);
+    console.error('❌ Naver login error stack:', error.stack);
     next(error);
   }
 };
@@ -268,6 +402,8 @@ module.exports = {
   forgotPassword,
   resetPassword,
   kakaoLogin,
+  googleLogin,
+  naverLogin,
   sendFindIdVerification,
   findUserId,
   sendResetPasswordVerification,

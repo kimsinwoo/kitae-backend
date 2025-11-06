@@ -19,6 +19,12 @@ model User {
   address   Json?    // 주소 정보를 JSON 형태로 저장
   role      String   @default("user") // user, admin, md, cs
   language  String   @default("ko") // ko, en, ja, zh, es
+  
+  // 소셜 로그인 필드
+  provider      String?  // 'google', 'kakao', 'naver'
+  providerId    String?  // 소셜 플랫폼의 고유 ID
+  profileImage  String?  // 프로필 이미지 URL
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -27,6 +33,7 @@ model User {
   favorites Favorite[]
   carts    Cart[]
 
+  @@index([provider, providerId])
   @@map("users")
 }
 

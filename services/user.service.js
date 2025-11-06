@@ -13,7 +13,10 @@ const getProfile = async (userId) => {
       language: true,
       createdAt: true,
       updatedAt: true,
-      address: true
+      address: true,
+      provider: true,
+      providerId: true,
+      profileImage: true
     }
   });
 
@@ -48,7 +51,10 @@ const updateProfile = async (userId, data) => {
       language: true,
       createdAt: true,
       updatedAt: true,
-      address: true
+      address: true,
+      provider: true,
+      providerId: true,
+      profileImage: true
     }
   });
   
@@ -63,6 +69,11 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 
   if (!user) {
     throw new Error('User not found');
+  }
+
+  // 소셜 로그인 사용자는 비밀번호가 없을 수 있음
+  if (!user.password) {
+    throw new Error('Password cannot be changed for social login users');
   }
 
   // Verify current password
