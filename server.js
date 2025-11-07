@@ -25,7 +25,7 @@ const app = express();
 // Middleware
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000'];
+  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000', 'https://kitae.shop/'];
 
 if (allowedOrigins.length === 0) {
   console.warn('⚠️ ALLOWED_ORIGINS is not set in environment variables');
@@ -56,18 +56,18 @@ app.use(session({
 }));
 
 // Routes
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/products', require('./routes/product.routes'));
-app.use('/api/categories', require('./routes/category.routes'));
-app.use('/api/cart', require('./routes/cart.routes'));
-app.use('/api/favorites', require('./routes/favorite.routes'));
-app.use('/api/orders', require('./routes/order.routes'));
-app.use('/api/reviews', require('./routes/review.routes'));
-app.use('/api/lookbooks', require('./routes/lookbook.routes'));
-app.use('/api/announcements', require('./routes/announcement.routes'));
-app.use('/api/payments', require('./routes/payment.routes'));
-app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/auth', require('./routes/auth.routes'));
+app.use('/users', require('./routes/user.routes'));
+app.use('/products', require('./routes/product.routes'));
+app.use('/categories', require('./routes/category.routes'));
+app.use('/cart', require('./routes/cart.routes'));
+app.use('/favorites', require('./routes/favorite.routes'));
+app.use('/orders', require('./routes/order.routes'));
+app.use('/reviews', require('./routes/review.routes'));
+app.use('/lookbooks', require('./routes/lookbook.routes'));
+app.use('/announcements', require('./routes/announcement.routes'));
+app.use('/payments', require('./routes/payment.routes'));
+app.use('/admin', require('./routes/admin.routes'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -109,7 +109,7 @@ if (!PORT) {
 
 // Connect to database and start server
 connectDB().then(() => {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 KITAE Backend Server running on port ${PORT}`);
   });
 }).catch((error) => {
