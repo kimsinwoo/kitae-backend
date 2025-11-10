@@ -121,7 +121,7 @@ const createOrder = async (userId, orderData) => {
     }
   }
 
-  const shipping = 3; // Fixed shipping cost
+  const shipping = 3000; // Fixed shipping cost (₩3,000)
   const tax = subtotal * 0.1; // 10% tax
   const total = subtotal + shipping + tax;
 

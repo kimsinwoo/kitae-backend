@@ -32,8 +32,9 @@ const getOrderById = async (req, res, next) => {
 
 const createOrder = async (req, res, next) => {
   try {
-    console.log('📦 Creating order for user:', req.user.id);
-    console.log('📦 Order data:', req.body);
+    console.log('📦 Creating order request:');
+    console.log('  User ID:', req.user.id);
+    console.log('  Request body:', JSON.stringify(req.body, null, 2));
     
     const order = await orderService.createOrder(req.user.id, req.body);
     
@@ -45,7 +46,9 @@ const createOrder = async (req, res, next) => {
       message: 'Order created successfully'
     });
   } catch (error) {
-    console.error('❌ Failed to create order:', error);
+    console.error('❌ Order creation error:');
+    console.error('  Error message:', error.message);
+    console.error('  Error stack:', error.stack);
     next(error);
   }
 };
