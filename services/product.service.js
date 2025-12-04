@@ -1,7 +1,7 @@
 const { prisma } = require('../config/database');
 
 const getAllProducts = async (filters = {}) => {
-  const { page, limit, category, gender, status, featured } = filters;
+  const { page = 1, limit = 20, category, gender, status, featured } = filters;
   
   const where = {};
   
@@ -117,22 +117,43 @@ const getProductById = async (id) => {
 
 // Product variant를 size와 color로 찾기
 const getVariantBySizeAndColor = async (productId, size, color) => {
-  const variant = await prisma.productVariant.findFirst({
-    where: {
-      productId,
-      size,
-      color
-    },
+  // 먼저 product가 존재하는지 확인
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
     include: {
-      product: true
+      variants: true
     }
   });
 
-  if (!variant) {
-    throw new Error(`Variant not found for product ${productId} with size ${size} and color ${color}`);
+  if (!product) {
+    const error = new Error(`Product not found: ${productId}`);
+    error.statusCode = 404;
+    throw error;
   }
 
-  return variant;
+  // 대소문자 구분 없이 찾기 위해 모든 variant를 가져와서 필터링
+  const variant = product.variants.find(
+    v => v.size.toLowerCase() === size.toLowerCase() && 
+         v.color.toLowerCase() === color.toLowerCase()
+  );
+
+  if (!variant) {
+    // 사용 가능한 variant 목록을 포함한 에러 메시지
+    const availableVariants = product.variants.map(v => `${v.size}/${v.color}`).join(', ');
+    const error = new Error(
+      `Variant not found for product ${productId} with size ${size} and color ${color}. ` +
+      `Available variants: ${availableVariants || 'none'}`
+    );
+    error.statusCode = 404;
+    error.availableVariants = product.variants;
+    throw error;
+  }
+
+  // variant와 product 정보를 함께 반환
+  return {
+    ...variant,
+    product
+  };
 };
 
 const searchProducts = async (searchTerm, pagination = {}) => {

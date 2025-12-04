@@ -11,7 +11,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "node scripts/seedProducts.js && node scripts/test"
+    "seed": "node scripts/seedProducts.js && node scripts/test",
+    "db:backup": "node scripts/backup-database.js",
+    "db:restore": "node scripts/restore-database.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",

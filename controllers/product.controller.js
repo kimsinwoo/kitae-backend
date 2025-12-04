@@ -22,12 +22,16 @@ const getAllProducts = async (req, res, next) => {
 
 const getFeaturedProducts = async (req, res, next) => {
   try {
+    console.log('📦 Fetching featured products...');
     const products = await productService.getFeaturedProducts();
+    console.log(`✅ Found ${products.length} featured products`);
+    
     res.json({
       success: true,
       data: products
     });
   } catch (error) {
+    console.error('❌ Error fetching featured products:', error);
     next(error);
   }
 };
@@ -92,6 +96,14 @@ const getVariantBySizeAndColor = async (req, res, next) => {
       data: variant
     });
   } catch (error) {
+    // 404 에러인 경우 명시적으로 처리
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+        availableVariants: error.availableVariants || null
+      });
+    }
     next(error);
   }
 };

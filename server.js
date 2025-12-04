@@ -33,55 +33,65 @@ if (allowedOrigins.length === 0) {
 
 console.log('🌐 CORS Allowed Origins:', allowedOrigins);
 
-// // CORS 설정 - origin 검증 함수 사용
-// const allowedOrigins = [
-//   'http://localhost:5173',
-//   'http://localhost:3000',
-//   'https://너프론트도메인',
-// ];
-
+// CORS 설정 - origin 검증 함수 사용
 const corsOptions = {
   origin(origin, callback) {
-    // 1) Origin 없는 요청: 허용 (서버 내부 호출, health check, 브라우저 직접 호출 등)
+    // 1) Origin 없는 요청: 허용하되 와일드카드 방지 (서버 내부 호출, health check 등)
     if (!origin) {
-      // 필요하면 로그만 남기고
-      console.warn('⚠️ CORS: No origin header in request -> allow');
+      // 개발 환경에서만 로그 출력 (프로덕션에서는 로그 제거 가능)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ CORS: No origin header in request (allowed)');
+      }
+      // origin이 없을 때는 특정 origin을 반환하지 않고 요청을 허용
+      // credentials: true를 사용하므로 와일드카드 대신 null 반환
       return callback(null, true);
     }
 
     // 2) Origin 있는 요청은 whitelist 체크
     if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ CORS: Allowed origin: ${origin}`);
+      }
+      // 명시적으로 origin 반환 (와일드카드 방지)
+      return callback(null, origin);
     }
 
     console.error('❌ CORS: Not allowed origin ->', origin);
+    console.error('❌ Allowed origins:', allowedOrigins);
     return callback(new Error('Not allowed by CORS'));
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
   credentials: true,
+  maxAge: 3600,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 
-// CORS 헤더 확인 미들웨어 (디버깅용)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    // 응답 전에 CORS 헤더가 제대로 설정되었는지 확인
-    res.on('finish', () => {
-      const corsHeader = res.getHeader('Access-Control-Allow-Origin');
-      if (corsHeader === '*') {
-        console.error('❌ CORS ERROR: Access-Control-Allow-Origin is set to wildcard!');
-        console.error('❌ Request origin:', origin);
-        console.error('❌ Response headers:', res.getHeaders());
-      } else if (corsHeader !== origin) {
-        console.warn('⚠️ CORS WARNING: Access-Control-Allow-Origin mismatch');
-        console.warn('⚠️ Expected:', origin);
-        console.warn('⚠️ Got:', corsHeader);
-      }
-    });
-  }
-  next();
-});
+// CORS 헤더 확인 미들웨어 (디버깅용 - 개발 환경에서만)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      // 응답 전에 CORS 헤더가 제대로 설정되었는지 확인
+      res.on('finish', () => {
+        const corsHeader = res.getHeader('Access-Control-Allow-Origin');
+        if (corsHeader === '*') {
+          console.error('❌ CORS ERROR: Access-Control-Allow-Origin is set to wildcard!');
+          console.error('❌ Request origin:', origin);
+        } else if (corsHeader && corsHeader !== origin) {
+          console.warn('⚠️ CORS WARNING: Access-Control-Allow-Origin mismatch');
+          console.warn('⚠️ Expected:', origin);
+          console.warn('⚠️ Got:', corsHeader);
+        }
+      });
+    }
+    next();
+  });
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
