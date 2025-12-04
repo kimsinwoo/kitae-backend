@@ -33,32 +33,31 @@ if (allowedOrigins.length === 0) {
 
 console.log('🌐 CORS Allowed Origins:', allowedOrigins);
 
-// CORS 설정 - origin 검증 함수 사용
+// // CORS 설정 - origin 검증 함수 사용
+// const allowedOrigins = [
+//   'http://localhost:5173',
+//   'http://localhost:3000',
+//   'https://너프론트도메인',
+// ];
+
 const corsOptions = {
-  origin: (origin, callback) => {
-    // credentials: true를 사용할 때는 origin이 반드시 필요
+  origin(origin, callback) {
+    // 1) Origin 없는 요청: 허용 (서버 내부 호출, health check, 브라우저 직접 호출 등)
     if (!origin) {
-      console.warn('⚠️ CORS: No origin header in request');
-      return callback(new Error('CORS: Origin header is required'));
+      // 필요하면 로그만 남기고
+      console.warn('⚠️ CORS: No origin header in request -> allow');
+      return callback(null, true);
     }
-    
-    // 허용된 origin 목록 확인
+
+    // 2) Origin 있는 요청은 whitelist 체크
     if (allowedOrigins.includes(origin)) {
-      console.log(`✅ CORS: Allowed origin: ${origin}`);
-      callback(null, origin); // origin을 명시적으로 반환 (와일드카드 방지)
-    } else {
-      console.warn(`⚠️ CORS: Blocked origin: ${origin}`);
-      console.warn(`⚠️ CORS: Allowed origins are:`, allowedOrigins);
-      callback(new Error(`CORS: Origin ${origin} is not allowed`));
+      return callback(null, true);
     }
+
+    console.error('❌ CORS: Not allowed origin ->', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Set-Cookie'],
   credentials: true,
-  maxAge: 3600,
-  preflightContinue: false,
-  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
