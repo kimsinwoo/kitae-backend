@@ -24,20 +24,65 @@ const app = express();
 
 // Middleware
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000', 'https://kitae.shop/'];
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/$/, '')) // 끝의 슬래시 제거
+  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000', 'https://kitae.shop'];
 
 if (allowedOrigins.length === 0) {
   console.warn('⚠️ ALLOWED_ORIGINS is not set in environment variables');
 }
 
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+console.log('🌐 CORS Allowed Origins:', allowedOrigins);
+
+// CORS 설정 - origin 검증 함수 사용
+const corsOptions = {
+  origin: (origin, callback) => {
+    // credentials: true를 사용할 때는 origin이 반드시 필요
+    if (!origin) {
+      console.warn('⚠️ CORS: No origin header in request');
+      return callback(new Error('CORS: Origin header is required'));
+    }
+    
+    // 허용된 origin 목록 확인
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Allowed origin: ${origin}`);
+      callback(null, origin); // origin을 명시적으로 반환 (와일드카드 방지)
+    } else {
+      console.warn(`⚠️ CORS: Blocked origin: ${origin}`);
+      console.warn(`⚠️ CORS: Allowed origins are:`, allowedOrigins);
+      callback(new Error(`CORS: Origin ${origin} is not allowed`));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
   credentials: true,
-  maxAge: 3600
-}));
+  maxAge: 3600,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+
+// CORS 헤더 확인 미들웨어 (디버깅용)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    // 응답 전에 CORS 헤더가 제대로 설정되었는지 확인
+    res.on('finish', () => {
+      const corsHeader = res.getHeader('Access-Control-Allow-Origin');
+      if (corsHeader === '*') {
+        console.error('❌ CORS ERROR: Access-Control-Allow-Origin is set to wildcard!');
+        console.error('❌ Request origin:', origin);
+        console.error('❌ Response headers:', res.getHeaders());
+      } else if (corsHeader !== origin) {
+        console.warn('⚠️ CORS WARNING: Access-Control-Allow-Origin mismatch');
+        console.warn('⚠️ Expected:', origin);
+        console.warn('⚠️ Got:', corsHeader);
+      }
+    });
+  }
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,6 +127,7 @@ app.use((err, req, res, next) => {
   console.error('❌ Request:', {
     method: req.method,
     url: req.url,
+    origin: req.headers.origin,
     body: req.body,
     session: req.session ? 'exists' : 'missing'
   });
@@ -89,6 +135,13 @@ app.use((err, req, res, next) => {
   // 에러가 이미 응답되었으면 처리하지 않음
   if (res.headersSent) {
     return next(err);
+  }
+  
+  // CORS 에러인 경우 적절한 CORS 헤더 설정
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   
   const statusCode = err.statusCode || err.status || 500;
