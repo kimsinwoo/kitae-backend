@@ -30,12 +30,78 @@ async function restoreDatabase(backupFilePath) {
       throw new Error('Backup file path is required');
     }
 
-    const resolvedPath = path.isAbsolute(backupFilePath) 
+    let resolvedPath = path.isAbsolute(backupFilePath) 
       ? backupFilePath 
       : path.resolve(process.cwd(), backupFilePath);
 
+    // 파일이 존재하지 않으면 여러 경로에서 찾기 시도
     if (!fs.existsSync(resolvedPath)) {
-      throw new Error(`Backup file not found: ${resolvedPath}`);
+      console.log(`⚠️ File not found at: ${resolvedPath}`);
+      console.log('🔍 Searching for backup file in common locations...');
+      
+      // 현재 디렉토리에서 직접 찾기
+      const currentDirFile = path.resolve(process.cwd(), path.basename(backupFilePath));
+      if (fs.existsSync(currentDirFile)) {
+        console.log(`✅ Found file in current directory: ${currentDirFile}`);
+        resolvedPath = currentDirFile;
+      } else {
+        // backups 디렉토리에서 찾기
+        const backupsDir = path.join(process.cwd(), 'backups');
+        const backupsFile = path.join(backupsDir, path.basename(backupFilePath));
+        if (fs.existsSync(backupsFile)) {
+          console.log(`✅ Found file in backups directory: ${backupsFile}`);
+          resolvedPath = backupsFile;
+        } else {
+          // 상위 디렉토리에서 찾기
+          const parentDirFile = path.resolve(process.cwd(), '..', path.basename(backupFilePath));
+          if (fs.existsSync(parentDirFile)) {
+            console.log(`✅ Found file in parent directory: ${parentDirFile}`);
+            resolvedPath = parentDirFile;
+          } else {
+            // 현재 디렉토리의 모든 .sql 파일 나열
+            console.log('\n📋 Available .sql files in current directory:');
+            try {
+              const files = fs.readdirSync(process.cwd());
+              const sqlFiles = files.filter(f => f.endsWith('.sql'));
+              if (sqlFiles.length > 0) {
+                sqlFiles.forEach(f => console.log(`   - ${f}`));
+              } else {
+                console.log('   (no .sql files found)');
+              }
+            } catch (e) {
+              // ignore
+            }
+            
+            // backups 디렉토리의 파일 나열
+            if (fs.existsSync(backupsDir)) {
+              console.log('\n📋 Available .sql files in backups directory:');
+              try {
+                const files = fs.readdirSync(backupsDir);
+                const sqlFiles = files.filter(f => f.endsWith('.sql'));
+                if (sqlFiles.length > 0) {
+                  sqlFiles.forEach(f => console.log(`   - ${f}`));
+                } else {
+                  console.log('   (no .sql files found)');
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+            
+            throw new Error(
+              `Backup file not found: ${resolvedPath}\n\n` +
+              `Please ensure:\n` +
+              `1. The backup file exists at the specified path\n` +
+              `2. You have uploaded the backup file to the server\n` +
+              `3. The file path is correct\n\n` +
+              `You can upload the file using:\n` +
+              `  - SCP: scp backup.sql user@server:/path/to/kitae-backend/\n` +
+              `  - SFTP: Use FileZilla or similar tool\n` +
+              `  - Or place it in the current directory or backups/ directory`
+            );
+          }
+        }
+      }
     }
 
     const dbInfo = parseDatabaseUrl(databaseUrl);

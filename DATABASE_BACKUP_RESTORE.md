@@ -64,6 +64,32 @@ mysqldump -h localhost -P 3306 -u root -p비밀번호 kitae_db > backup.sql
 
 ### 복원 실행
 
+#### 0단계: 백업 파일 업로드 (중요!)
+
+**Windows에서 Ubuntu 서버로 파일 업로드:**
+
+```bash
+# 방법 1: SCP 사용 (PowerShell 또는 CMD)
+scp backups/kitae_db_backup_2025-12-04T12-36-19.sql ubuntu@서버IP:~/kitae-backend/
+
+# 방법 2: SFTP 사용 (FileZilla, WinSCP 등)
+# 호스트: 서버IP
+# 사용자명: ubuntu
+# 프로토콜: SFTP
+# 포트: 22
+# 업로드 경로: ~/kitae-backend/ 또는 ~/kitae-backend/backups/
+```
+
+**서버에서 백업 파일 확인:**
+```bash
+cd ~/kitae-backend
+
+# 사용 가능한 백업 파일 목록 확인
+npm run db:list
+# 또는
+node scripts/list-backups.js
+```
+
 #### 방법 1: Node.js 스크립트 사용 (권장)
 
 ```bash
@@ -73,7 +99,10 @@ cd kitae-backend
 node scripts/restore-database.js backups/kitae_db_backup_YYYY-MM-DDTHH-mm-ss.sql
 
 # 또는 절대 경로 사용
-node scripts/restore-database.js "C:\path\to\backup.sql"
+node scripts/restore-database.js "/home/ubuntu/kitae-backend/backups/kitae_db_backup_YYYY-MM-DDTHH-mm-ss.sql"
+
+# 또는 현재 디렉토리에 파일이 있는 경우
+node scripts/restore-database.js kitae_db_backup_YYYY-MM-DDTHH-mm-ss.sql
 ```
 
 #### 방법 2: 수동 복원 (mysql 직접 사용)
@@ -126,6 +155,8 @@ Host: localhost:3306
 - 백업 파일에서 데이터베이스 자동 복원
 - 데이터베이스가 없으면 자동 생성
 - `.env` 파일의 `DATABASE_URL` 사용
+- 여러 위치에서 백업 파일 자동 검색
+- 사용 가능한 백업 파일 목록 표시
 
 **사용법:**
 ```bash
@@ -137,8 +168,51 @@ node scripts/restore-database.js <백업파일경로>
 # 상대 경로
 node scripts/restore-database.js backups/kitae_db_backup_2024-01-15T14-30-00.sql
 
-# 절대 경로
+# 절대 경로 (Windows)
 node scripts/restore-database.js "C:\Users\username\Downloads\kitae_db_backup_2024-01-15T14-30-00.sql"
+
+# 절대 경로 (Linux/Ubuntu)
+node scripts/restore-database.js "/home/ubuntu/kitae-backend/backups/kitae_db_backup_2024-01-15T14-30-00.sql"
+
+# 현재 디렉토리의 파일
+node scripts/restore-database.js kitae_db_backup_2024-01-15T14-30-00.sql
+```
+
+**파일을 찾을 수 없는 경우:**
+스크립트가 자동으로 다음 위치에서 파일을 검색합니다:
+- 지정된 경로
+- 현재 디렉토리
+- `backups/` 디렉토리
+- 상위 디렉토리
+
+파일을 찾을 수 없으면 사용 가능한 `.sql` 파일 목록을 표시합니다.
+
+### 백업 파일 목록 스크립트 (`scripts/list-backups.js`)
+
+**기능:**
+- 시스템에서 사용 가능한 백업 파일 검색 및 표시
+- 파일 크기 및 수정 날짜 정보 제공
+
+**사용법:**
+```bash
+npm run db:list
+# 또는
+node scripts/list-backups.js
+```
+
+**출력 예시:**
+```
+🔍 Searching for backup files...
+
+📁 /home/ubuntu/kitae-backend/backups:
+   ✅ kitae_db_backup_2025-12-04T12-36-19.sql
+      Size: 0.02 MB | Modified: 2025-12-04 12:36:19
+      Path: /home/ubuntu/kitae-backend/backups/kitae_db_backup_2025-12-04T12-36-19.sql
+
+✅ Found 1 backup file(s)
+
+💡 To restore, use:
+   node scripts/restore-database.js "backups/kitae_db_backup_2025-12-04T12-36-19.sql"
 ```
 
 **출력 예시:**
@@ -258,8 +332,9 @@ npm run dev
 
 | 작업 | 명령어 |
 |------|--------|
-| 백업 | `node scripts/backup-database.js` |
-| 복원 | `node scripts/restore-database.js <파일경로>` |
+| 백업 | `npm run db:backup` 또는 `node scripts/backup-database.js` |
+| 백업 파일 목록 | `npm run db:list` 또는 `node scripts/list-backups.js` |
+| 복원 | `npm run db:restore <파일경로>` 또는 `node scripts/restore-database.js <파일경로>` |
 | Prisma 재생성 | `npm run prisma:generate` |
 | 서버 실행 | `npm run dev` |
 

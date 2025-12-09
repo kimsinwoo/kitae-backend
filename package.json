@@ -13,7 +13,9 @@
     "prisma:studio": "prisma studio",
     "seed": "node scripts/seedProducts.js && node scripts/test",
     "db:backup": "node scripts/backup-database.js",
-    "db:restore": "node scripts/restore-database.js"
+    "db:restore": "node scripts/restore-database.js",
+    "db:list": "node scripts/list-backups.js",
+    "db:export": "node scripts/export-data-to-sql.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",

@@ -15,17 +15,26 @@ if (envResult.error) {
 
 // Debug: Check email configuration on startup
 console.log('\n📧 Email Configuration on Startup:');
-console.log(`EMAIL_USER: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '***' : 'NOT SET'}`);
+console.log(
+  `EMAIL_USER: ${
+    process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '***' : 'NOT SET'
+  }`
+);
 console.log(`EMAIL_PASSWORD: ${process.env.EMAIL_PASSWORD ? '***SET***' : 'NOT SET'}`);
 console.log(`EMAIL_SERVICE: ${process.env.EMAIL_SERVICE || 'gmail (default)'}`);
 console.log('');
 
 const app = express();
 
-// Middleware
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/$/, '')) // 끝의 슬래시 제거
-  : ['https://web-kitae-front-mhld7hkwfc74f64c.sel3.cloudtype.app', 'http://localhost:3001', 'http://localhost:3000', 'https://kitae.shop'];
+// Middleware - CORS allowed origins 설정
+const rawOrigins =
+  process.env.NODE_ENV === 'development'
+    ? process.env.DEVELOPMENT_ALLOWED_ORIGINS
+    : process.env.PRODUCTION_ALLOWED_ORIGINS;
+
+const allowedOrigins = rawOrigins
+  ? rawOrigins.split(',').map((origin) => origin.trim().replace(/\/$/, ''))
+  : [];
 
 if (allowedOrigins.length === 0) {
   console.warn('⚠️ ALLOWED_ORIGINS is not set in environment variables');
@@ -33,30 +42,32 @@ if (allowedOrigins.length === 0) {
 
 console.log('🌐 CORS Allowed Origins:', allowedOrigins);
 
-// CORS 설정 - origin 검증 함수 사용
+// CORS 설정 - origin 검증 함수
 const corsOptions = {
-  origin(origin, callback) {
-    // 1) Origin 없는 요청: 허용하되 와일드카드 방지 (서버 내부 호출, health check 등)
-    if (!origin) {
-      // 개발 환경에서만 로그 출력 (프로덕션에서는 로그 제거 가능)
+  origin(requestOrigin, callback) {
+    // 1) Origin 없는 요청: 서버 내부 호출, 헬스체크, curl/Postman 등
+    if (!requestOrigin) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('ℹ️ CORS: No origin header in request (allowed)');
+        console.log(
+          'ℹ️ CORS: No Origin header in request (likely server-to-server / health check)'
+        );
       }
-      // origin이 없을 때는 특정 origin을 반환하지 않고 요청을 허용
-      // credentials: true를 사용하므로 와일드카드 대신 null 반환
+      // Origin이 없으면 CORS 대상이 아니므로 그냥 허용
       return callback(null, true);
     }
 
     // 2) Origin 있는 요청은 whitelist 체크
-    if (allowedOrigins.includes(origin)) {
+    const normalizedOrigin = requestOrigin.replace(/\/$/, '');
+
+    if (allowedOrigins.includes(normalizedOrigin)) {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ CORS: Allowed origin: ${origin}`);
+        console.log(`✅ CORS: Allowed origin: ${requestOrigin}`);
       }
-      // 명시적으로 origin 반환 (와일드카드 방지)
-      return callback(null, origin);
+      // 요청 Origin 그대로 반영
+      return callback(null, requestOrigin);
     }
 
-    console.error('❌ CORS: Not allowed origin ->', origin);
+    console.error('❌ CORS: Not allowed origin ->', requestOrigin);
     console.error('❌ Allowed origins:', allowedOrigins);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -66,7 +77,7 @@ const corsOptions = {
   credentials: true,
   maxAge: 3600,
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
@@ -75,8 +86,9 @@ app.use(cors(corsOptions));
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
-      // 응답 전에 CORS 헤더가 제대로 설정되었는지 확인
+    const normalizedOrigin = origin ? origin.replace(/\/$/, '') : undefined;
+
+    if (origin && allowedOrigins.includes(normalizedOrigin)) {
       res.on('finish', () => {
         const corsHeader = res.getHeader('Access-Control-Allow-Origin');
         if (corsHeader === '*') {
@@ -92,22 +104,28 @@ if (process.env.NODE_ENV === 'development') {
     next();
   });
 }
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session middleware
-app.use(session({
-  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'kitae-session-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS에서만 true
-    httpOnly: true, // XSS 공격 방지
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
-    sameSite: 'lax' // CSRF 공격 방지
-  },
-  name: 'kitae.sid' // 기본 'connect.sid' 대신 커스텀 이름
-}));
+app.use(
+  session({
+    secret:
+      process.env.SESSION_SECRET ||
+      process.env.JWT_SECRET ||
+      'kitae-session-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production', // HTTPS에서만 true
+      httpOnly: true, // XSS 공격 방지
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+      sameSite: 'lax', // CSRF 공격 방지
+    },
+    name: 'kitae.sid', // 기본 'connect.sid' 대신 커스텀 이름
+  })
+);
 
 // Routes
 app.use('/auth', require('./routes/auth.routes'));
@@ -138,28 +156,29 @@ app.use((err, req, res, next) => {
     url: req.url,
     origin: req.headers.origin,
     body: req.body,
-    session: req.session ? 'exists' : 'missing'
+    session: req.session ? 'exists' : 'missing',
   });
-  
-  // 에러가 이미 응답되었으면 처리하지 않음
+
   if (res.headersSent) {
     return next(err);
   }
-  
-  // CORS 에러인 경우 적절한 CORS 헤더 설정
+
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  const normalizedOrigin = origin ? origin.replace(/\/$/, '') : undefined;
+
+  // CORS 에러인 경우에도, 허용된 origin이면 헤더 세팅
+  if (origin && allowedOrigins.includes(normalizedOrigin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
-  
+
   const statusCode = err.statusCode || err.status || 500;
   res.status(statusCode).json({
     success: false,
     message: err.message || 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    errorName: process.env.NODE_ENV === 'development' ? err.name : undefined
+    errorName: process.env.NODE_ENV === 'development' ? err.name : undefined,
   });
 });
 
@@ -170,12 +189,13 @@ if (!PORT) {
 }
 
 // Connect to database and start server
-connectDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 KITAE Backend Server running on port ${PORT}`);
+connectDB()
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 KITAE Backend Server running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   });
-}).catch((error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
-});
-

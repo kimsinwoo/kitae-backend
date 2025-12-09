@@ -8,5 +8,6 @@ build/
 .vscode/
 .idea/
 backups/
+exports/
 *.sql
 
